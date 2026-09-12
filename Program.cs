@@ -21,14 +21,29 @@ class Program
         DateTime data = DateTime.Now;
         Console.WriteLine($"Data de geração: {data:dd/MM/yyyy HH:mm}");
 
-        Console.WriteLine();
-        Console.WriteLine("Escolha o formato:");
-        Console.WriteLine("1 - PDF");
-        Console.WriteLine("2 - CSV");
-        Console.WriteLine("3 - JSON");
-        Console.Write("Opção: ");
+        string opcao;
 
-        string opcao = Console.ReadLine() ?? "";
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Escolha o formato:");
+            Console.WriteLine("1 - PDF");
+            Console.WriteLine("2 - CSV");
+            Console.WriteLine("3 - JSON");
+            Console.Write("Opção: ");
+
+            opcao = Console.ReadLine() ?? "";
+
+            if (opcao == "1" || opcao == "2" || opcao == "3")
+            {
+                break;
+            }
+
+            Console.Clear();
+            Console.WriteLine("===== GERADOR DE RELATÓRIOS =====");
+            Console.WriteLine();
+            Console.WriteLine("Opção inválida. Escolha 1, 2 ou 3.");
+        }
 
         Directory.CreateDirectory("output");
 
@@ -120,10 +135,12 @@ class Program
                     data = data.ToString("dd/MM/yyyy HH:mm")
                 };
 
-                string conteudoJson = JsonSerializer.Serialize(
-                    relatorio,
-                    new JsonSerializerOptions { WriteIndented = true }
-                );
+                string conteudoJson = JsonSerializer.Serialize(relatorio, 
+                    new JsonSerializerOptions{
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    }
+                 );
 
                 File.WriteAllText(
                     Path.Combine("output", "relatorio.json"),
@@ -133,10 +150,6 @@ class Program
                 Console.WriteLine("Relatório \"" + titulo + "\" gerado em JSON com sucesso.");
                 break;
 
-            default:
-                Console.WriteLine();
-                Console.WriteLine("Opção inválida.");
-                break;
         }
     }
 
@@ -153,27 +166,6 @@ class Program
             }
 
             Console.WriteLine($"{nomeCampo} é obrigatório.");
-        }
-    }
-
-    static string LerDataObrigatoria()
-    {
-        while (true)
-        {
-            Console.Write("Data de geração (dd/MM/yyyy): ");
-            string valor = Console.ReadLine() ?? "";
-
-            if (DateTime.TryParseExact(
-                valor,
-                "dd/MM/yyyy",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out DateTime data))
-            {
-                return data.ToString("dd/MM/yyyy");
-            }
-
-            Console.WriteLine("Data inválida. Informe uma data válida no formato dd/MM/yyyy.");
         }
     }
 }
