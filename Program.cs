@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
+using System.Globalization;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Fonts;
 using PdfSharpCore.Pdf;
@@ -13,17 +14,12 @@ class Program
         Console.WriteLine("===== GERADOR DE RELATÓRIOS =====");
         Console.WriteLine();
 
-        Console.Write("Título: ");
-        string titulo = Console.ReadLine() ?? "";
+        string titulo = LerCampoObrigatorio("Título");
+        string responsavel = LerCampoObrigatorio("Responsável");
+        string descricao = LerCampoObrigatorio("Descrição");
 
-        Console.Write("Responsável: ");
-        string responsavel = Console.ReadLine() ?? "";
-
-        Console.Write("Descrição: ");
-        string descricao = Console.ReadLine() ?? "";
-
-        Console.Write("Data de geração: ");
-        string data = Console.ReadLine() ?? "";
+        DateTime data = DateTime.Now;
+        Console.WriteLine($"Data de geração: {data:dd/MM/yyyy HH:mm}");
 
         Console.WriteLine();
         Console.WriteLine("Escolha o formato:");
@@ -97,12 +93,16 @@ class Program
                 Console.WriteLine("Gerando CSV...");
 
                 string conteudoCsv =
-                    "Título,Responsável,Descrição,Data\n" +
-                    "\"" + titulo + "\",\"" + responsavel + "\",\"" + descricao + "\",\"" + data + "\"";
+                    "Título;Responsável;Descrição;Data\n" +
+                    "\"" + titulo + "\";\"" +
+                    responsavel + "\";\"" +
+                    descricao + "\";\"" +
+                    data.ToString("dd/MM/yyyy HH:mm:ss") + "\"";
 
                 File.WriteAllText(
                     Path.Combine("output", "relatorio.csv"),
-                    conteudoCsv
+                    conteudoCsv,
+                    new System.Text.UTF8Encoding(true)
                 );
 
                 Console.WriteLine("Relatório \"" + titulo + "\" gerado em CSV com sucesso.");
@@ -117,7 +117,7 @@ class Program
                     titulo = titulo,
                     responsavel = responsavel,
                     descricao = descricao,
-                    data = data
+                    data = data.ToString("dd/MM/yyyy HH:mm")
                 };
 
                 string conteudoJson = JsonSerializer.Serialize(
@@ -137,6 +137,43 @@ class Program
                 Console.WriteLine();
                 Console.WriteLine("Opção inválida.");
                 break;
+        }
+    }
+
+    static string LerCampoObrigatorio(string nomeCampo)
+    {
+        while (true)
+        {
+            Console.Write($"{nomeCampo}: ");
+            string valor = Console.ReadLine() ?? "";
+
+            if (!string.IsNullOrWhiteSpace(valor))
+            {
+                return valor;
+            }
+
+            Console.WriteLine($"{nomeCampo} é obrigatório.");
+        }
+    }
+
+    static string LerDataObrigatoria()
+    {
+        while (true)
+        {
+            Console.Write("Data de geração (dd/MM/yyyy): ");
+            string valor = Console.ReadLine() ?? "";
+
+            if (DateTime.TryParseExact(
+                valor,
+                "dd/MM/yyyy",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime data))
+            {
+                return data.ToString("dd/MM/yyyy");
+            }
+
+            Console.WriteLine("Data inválida. Informe uma data válida no formato dd/MM/yyyy.");
         }
     }
 }
