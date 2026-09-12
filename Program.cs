@@ -2,15 +2,15 @@
 using System.IO;
 using System.Text.Json;
 using System.Globalization;
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Fonts;
-using PdfSharpCore.Pdf;
-using PdfSharpCore.Utils;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 class Program
 {
     static void Main()
     {
+        QuestPDF.Settings.License = LicenseType.Community;
+
         Console.WriteLine("===== GERADOR DE RELATÓRIOS =====");
         Console.WriteLine();
 
@@ -53,54 +53,43 @@ class Program
                 Console.WriteLine();
                 Console.WriteLine("Gerando PDF...");
 
-                GlobalFontSettings.FontResolver = new FontResolver();
-
-                var documento = new PdfDocument();
-                documento.Info.Title = titulo;
-
-                var pagina = documento.AddPage();
-                var grafico = XGraphics.FromPdfPage(pagina);
-
-                var fonteTitulo = new XFont("Arial", 20, XFontStyle.Bold);
-                var fonteTexto = new XFont("Arial", 12, XFontStyle.Regular);
-
-                grafico.DrawString(
-                    titulo,
-                    fonteTitulo,
-                    XBrushes.Black,
-                    new XRect(40, 40, pagina.Width - 80, 40),
-                    XStringFormats.TopLeft
-                );
-
-                grafico.DrawString(
-                    "Responsável: " + responsavel,
-                    fonteTexto,
-                    XBrushes.Black,
-                    new XRect(40, 100, pagina.Width - 80, 30),
-                    XStringFormats.TopLeft
-                );
-
-                grafico.DrawString(
-                    "Descrição: " + descricao,
-                    fonteTexto,
-                    XBrushes.Black,
-                    new XRect(40, 140, pagina.Width - 80, 60),
-                    XStringFormats.TopLeft
-                );
-
-                grafico.DrawString(
-                    "Data: " + data,
-                    fonteTexto,
-                    XBrushes.Black,
-                    new XRect(40, 220, pagina.Width - 80, 30),
-                    XStringFormats.TopLeft
-                );
-
                 string caminhoPdf = Path.Combine("output", "relatorio.pdf");
 
-                documento.Save(caminhoPdf);
+                Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Margin(40);
 
-                Console.WriteLine("Relatório \"" + titulo + "\" gerado em PDF com sucesso.");
+                        page.Content().Column(column =>
+                        {
+                            column.Spacing(10);
+
+                            column.Item()
+                                .Text("RELATÓRIO")
+                                .FontSize(20)
+                                .Bold();
+
+                            column.Item()
+                                .Text($"Título: {titulo}");
+
+                            column.Item()
+                                .Text($"Responsável: {responsavel}");
+
+                            column.Item()
+                                .Text($"Descrição: {descricao}");
+
+                            column.Item()
+                                .Text($"Data: {data:dd/MM/yyyy HH:mm:ss}");
+                        });
+                    });
+                })
+                .GeneratePdf(caminhoPdf);
+
+                Console.WriteLine(
+                    $"Relatório \"{titulo}\" gerado em PDF com sucesso."
+                );
+
                 break;
 
             case "2":
@@ -135,10 +124,11 @@ class Program
                     data = data.ToString("dd/MM/yyyy HH:mm")
                 };
 
-                string conteudoJson = JsonSerializer.Serialize(relatorio, 
-                    new JsonSerializerOptions{
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                string conteudoJson = JsonSerializer.Serialize(relatorio,
+                    new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                     }
                  );
 
