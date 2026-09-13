@@ -77,18 +77,11 @@ class Program
                 Console.WriteLine();
                 Console.WriteLine("Gerando CSV...");
 
-                string conteudoCsv =
-                    "Título;Responsável;Descrição;Data\n" +
-                    "\"" + titulo + "\";\"" +
-                    responsavel + "\";\"" +
-                    descricao + "\";\"" +
-                    data.ToString("dd/MM/yyyy HH:mm:ss") + "\"";
+                string caminhoCsv = Path.Combine("output", "relatorio.csv");
 
-                File.WriteAllText(
-                    Path.Combine("output", "relatorio.csv"),
-                    conteudoCsv,
-                    new System.Text.UTF8Encoding(true)
-                );
+                var geradorCsv = new GeradorCsv();
+
+                geradorCsv.Gerar(relatorio, caminhoCsv);
 
                 Console.WriteLine("Relatório \"" + titulo + "\" gerado em CSV com sucesso.");
                 break;
