@@ -1,9 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
-using System.Globalization;
-using QuestPDF.Fluent;
-using QuestPDF.Infrastructure;
+using TdeGeradorRelatorios.Models;
+using TdeGeradorRelatorios.Geradores;
 
 namespace TdeGeradorRelatorios;
 
@@ -11,7 +10,6 @@ class Program
 {
     static void Main()
     {
-        QuestPDF.Settings.License = LicenseType.Community;
 
         Console.WriteLine("===== GERADOR DE RELATÓRIOS =====");
         Console.WriteLine();
@@ -21,6 +19,14 @@ class Program
         string descricao = LerCampoObrigatorio("Descrição");
 
         DateTime data = DateTime.Now;
+
+        var relatorio = new Relatorio(
+            titulo,
+            responsavel,
+            descricao,
+            data
+        );
+
         Console.WriteLine($"Data de geração: {data:dd/MM/yyyy HH:mm}");
 
         string opcao;
@@ -57,36 +63,9 @@ class Program
 
                 string caminhoPdf = Path.Combine("output", "relatorio.pdf");
 
-                Document.Create(container =>
-                {
-                    container.Page(page =>
-                    {
-                        page.Margin(40);
+                var geradorPdf = new GeradorPdf();
 
-                        page.Content().Column(column =>
-                        {
-                            column.Spacing(10);
-
-                            column.Item()
-                                .Text("RELATÓRIO")
-                                .FontSize(20)
-                                .Bold();
-
-                            column.Item()
-                                .Text($"Título: {titulo}");
-
-                            column.Item()
-                                .Text($"Responsável: {responsavel}");
-
-                            column.Item()
-                                .Text($"Descrição: {descricao}");
-
-                            column.Item()
-                                .Text($"Data: {data:dd/MM/yyyy HH:mm:ss}");
-                        });
-                    });
-                })
-                .GeneratePdf(caminhoPdf);
+                geradorPdf.Gerar(relatorio, caminhoPdf);
 
                 Console.WriteLine(
                     $"Relatório \"{titulo}\" gerado em PDF com sucesso."
@@ -118,7 +97,7 @@ class Program
                 Console.WriteLine();
                 Console.WriteLine("Gerando JSON...");
 
-                var relatorio = new
+                var dadosJson = new
                 {
                     titulo = titulo,
                     responsavel = responsavel,
@@ -126,7 +105,7 @@ class Program
                     data = data.ToString("dd/MM/yyyy HH:mm")
                 };
 
-                string conteudoJson = JsonSerializer.Serialize(relatorio,
+                string conteudoJson = JsonSerializer.Serialize(dadosJson,
                     new JsonSerializerOptions
                     {
                         WriteIndented = true,
