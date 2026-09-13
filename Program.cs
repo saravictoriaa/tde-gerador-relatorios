@@ -5,6 +5,8 @@ using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 
+namespace TdeGeradorRelatorios;
+
 class Program
 {
     static void Main()
