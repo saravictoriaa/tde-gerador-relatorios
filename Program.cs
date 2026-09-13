@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text.Json;
 using TdeGeradorRelatorios.Models;
 using TdeGeradorRelatorios.Geradores;
 
@@ -90,26 +89,11 @@ class Program
                 Console.WriteLine();
                 Console.WriteLine("Gerando JSON...");
 
-                var dadosJson = new
-                {
-                    titulo = titulo,
-                    responsavel = responsavel,
-                    descricao = descricao,
-                    data = data.ToString("dd/MM/yyyy HH:mm")
-                };
+                string caminhoJson = Path.Combine("output", "relatorio.json");
 
-                string conteudoJson = JsonSerializer.Serialize(dadosJson,
-                    new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                    }
-                 );
+                var geradorJson = new GeradorJson();
 
-                File.WriteAllText(
-                    Path.Combine("output", "relatorio.json"),
-                    conteudoJson
-                );
+                geradorJson.Gerar(relatorio, caminhoJson);
 
                 Console.WriteLine("Relatório \"" + titulo + "\" gerado em JSON com sucesso.");
                 break;
