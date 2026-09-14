@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using TdeGeradorRelatorios.Models;
-using TdeGeradorRelatorios.Geradores;
+using TdeGeradorRelatorios.Factories;
 
 namespace TdeGeradorRelatorios;
 
@@ -54,51 +54,51 @@ class Program
 
         Directory.CreateDirectory("output");
 
+        RelatorioCreator creator;
+
         switch (opcao)
         {
             case "1":
-                Console.WriteLine();
-                Console.WriteLine("Gerando PDF...");
-
-                string caminhoPdf = Path.Combine("output", "relatorio.pdf");
-
-                var geradorPdf = new GeradorPdf();
-
-                geradorPdf.Gerar(relatorio, caminhoPdf);
-
-                Console.WriteLine(
-                    $"Relatório \"{titulo}\" gerado em PDF com sucesso."
-                );
-
-                break;
+                    Console.WriteLine();
+                    Console.WriteLine("Gerando PDF...");
+                    creator = new PdfCreator();
+                    break;
 
             case "2":
-                Console.WriteLine();
-                Console.WriteLine("Gerando CSV...");
-
-                string caminhoCsv = Path.Combine("output", "relatorio.csv");
-
-                var geradorCsv = new GeradorCsv();
-
-                geradorCsv.Gerar(relatorio, caminhoCsv);
-
-                Console.WriteLine("Relatório \"" + titulo + "\" gerado em CSV com sucesso.");
-                break;
+            {
+                    Console.WriteLine();
+                    Console.WriteLine("Gerando CSV...");
+                    creator = new CsvCreator();
+                    break;
+            }
 
             case "3":
-                Console.WriteLine();
-                Console.WriteLine("Gerando JSON...");
+            {
+                    Console.WriteLine();
+                    Console.WriteLine("Gerando JSON...");
+                    creator = new JsonCreator();
+                    break;
+            }
 
-                string caminhoJson = Path.Combine("output", "relatorio.json");
-
-                var geradorJson = new GeradorJson();
-
-                geradorJson.Gerar(relatorio, caminhoJson);
-
-                Console.WriteLine("Relatório \"" + titulo + "\" gerado em JSON com sucesso.");
-                break;
+            default:
+                throw new InvalidOperationException("Opção inválida.");
 
         }
+
+        string extensao = opcao switch
+        {
+            "1" => "pdf",
+            "2" => "csv",
+            "3" => "json",
+            _ => throw new InvalidOperationException()
+        };
+
+        string caminhoDestino = Path.Combine("output", $"relatorio.{extensao}");
+
+        creator.Gerar(relatorio, caminhoDestino);
+
+        Console.WriteLine($"Relatório \"{titulo}\" gerado com sucesso.");
+
     }
 
     static string LerCampoObrigatorio(string nomeCampo)
