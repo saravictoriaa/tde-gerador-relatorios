@@ -53,3 +53,118 @@ Exemplos desse forte acoplamento incluem:
 - Chamadas diretas de métodos do sistema operacional para acesso ao disco (`File.WriteAllText`).
 
 Dessa forma, o núcleo da aplicação conhece exatamente os mecanismos de formatação e persistência, inviabilizando a substituição ou os testes automatizados dessas operações sem impactar o serviço principal.
+
+---
+
+## 4. Situação Após a Refatoração
+
+A refatoração introduziu uma estrutura em camadas bem definidas, aplicando o padrão criacional *Factory Method* e separando as responsabilidades em classes coesas. A seguir, analisamos como cada princípio SOLID foi tratado na versão refatorada.
+
+### Arquitetura resultante
+
+```
+Program
+  └── seleciona RelatorioCreator conforme entrada do usuário
+        └── RelatorioCreator (classe abstrata — Creator)
+              ├── CriarGerador() : IGeradorRelatorio   ← Factory Method
+              └── Gerar(Relatorio, string)              ← Template Method
+
+ConcreteCreators            ConcreteProducts
+  PdfCreator   →  cria →   GeradorPdf   : IGeradorRelatorio
+  CsvCreator   →  cria →   GeradorCsv   : IGeradorRelatorio
+  JsonCreator  →  cria →   GeradorJson  : IGeradorRelatorio
+
+Models
+  Relatorio (record) — dados do domínio
+
+Interfaces
+  IGeradorRelatorio — contrato único: Gerar(Relatorio, string)
+```
+
+---
+
+### 4.1 SRP — Princípio da Responsabilidade Única
+
+**Status: Tratado.**
+
+Cada classe passou a ter uma única razão para mudar:
+
+- `GeradorPdf` — responsável exclusivamente pela geração de documentos PDF via QuestPDF.
+- `GeradorCsv` — responsável pela formatação e gravação de arquivos CSV com UTF-8 BOM e separador `;`.
+- `GeradorJson` — responsável pela serialização JSON com preservação de acentuação.
+- `RelatorioCreator` — responsável pelo fluxo de criação e delegação da geração.
+- `Program` — responsável pela interação com o usuário, coleta de dados e seleção do Creator.
+
+A lógica de geração de PDF, CSV e JSON saiu do `Program` e foi encapsulada em classes dedicadas. Uma alteração na biblioteca QuestPDF, por exemplo, afeta apenas `GeradorPdf`, sem tocar no restante do sistema.
+
+---
+
+### 4.2 OCP — Princípio do Aberto/Fechado
+
+**Status: Tratado.**
+
+Adicionar um novo formato de relatório (por exemplo, XML) não exige modificar nenhuma das classes existentes. O processo se resume a:
+
+1. Criar `GeradorXml : IGeradorRelatorio` — nova implementação do produto.
+2. Criar `XmlCreator : RelatorioCreator` — novo Creator que retorna `GeradorXml`.
+3. Adicionar um `case "4"` no `switch` do `Program` para mapear a entrada do usuário ao novo Creator.
+
+O `switch` no `Program` não contém lógica de geração — ele apenas traduz a escolha do usuário para o Creator correspondente, que é responsabilidade natural da camada de apresentação. As classes de geração existentes permanecem sem alteração.
+
+---
+
+### 4.3 LSP — Princípio da Substituição de Liskov
+
+**Status: Aplicável e respeitado.**
+
+Na versão inicial, o princípio não era aplicável por ausência de hierarquia. Após a refatoração, existe uma hierarquia concreta: `PdfCreator`, `CsvCreator` e `JsonCreator` estendem `RelatorioCreator`.
+
+O contrato de `RelatorioCreator` define dois comportamentos:
+- `CriarGerador()` deve retornar uma implementação válida de `IGeradorRelatorio`.
+- `Gerar(relatorio, caminho)` deve produzir um arquivo no caminho informado.
+
+Todos os ConcreteCreators satisfazem esse contrato sem alterar pré-condições, pós-condições ou invariantes. O teste `QualquerCreator_UsadoComoRelatorioCreator_DeveGerarArquivo` demonstra isso diretamente: o cliente opera exclusivamente sobre `RelatorioCreator` e o comportamento se mantém correto independentemente de qual subclasse está em uso.
+
+---
+
+### 4.4 ISP — Princípio da Segregação de Interfaces
+
+**Status: Boa aderência.**
+
+A interface `IGeradorRelatorio` define um único método:
+
+```csharp
+void Gerar(Relatorio relatorio, string caminhoDestino);
+```
+
+Essa interface é coesa e não obriga nenhuma implementação a depender de comportamentos que não utiliza. `GeradorPdf`, `GeradorCsv` e `GeradorJson` implementam apenas o que precisam. Não há métodos desnecessários nem interfaces excessivamente genéricas.
+
+Cabe observar que a boa aderência ao ISP neste projeto é favorecida pela simplicidade do domínio — um único ponto de variação (o formato de saída) com uma única operação significativa (gerar). Em sistemas maiores, esse equilíbrio exigiria atenção contínua.
+
+---
+
+### 4.5 DIP — Princípio da Inversão de Dependência
+
+**Status: Parcialmente tratado.**
+
+O `Program` passou a depender de `RelatorioCreator` (abstração), e não das implementações concretas dos geradores. O fluxo principal não conhece `GeradorPdf`, `GeradorCsv` ou `GeradorJson` diretamente.
+
+```csharp
+// Program.cs — depende da abstração, não dos concretos
+RelatorioCreator creator = new PdfCreator();
+creator.Gerar(relatorio, caminho);
+```
+
+No entanto, o `Program` ainda instancia diretamente os ConcreteCreators (`new PdfCreator()`, `new CsvCreator()`, `new JsonCreator()`). Para uma inversão completa, seria necessário introduzir injeção de dependência ou um mecanismo de resolução externo. Dado o escopo acadêmico e o tamanho do projeto, essa limitação é aceitável e documentada — a dependência concreta ficou restrita ao ponto de entrada da aplicação, que é o local mais adequado para decisões de composição.
+
+---
+
+## 5. Comparação Antes × Depois
+
+| Princípio | Versão Inicial | Versão Refatorada |
+|-----------|---------------|-------------------|
+| **SRP** | `Program` concentrava geração de PDF, CSV e JSON, validação, I/O e interação | Cada gerador tem responsabilidade única; `Program` coordena apenas o fluxo de entrada |
+| **OCP** | Novo formato exigia modificar o `switch` com lógica de geração no `Program` | Novo formato = novo `Creator` + novo `Gerador`; código existente não é alterado |
+| **LSP** | Não aplicável — sem hierarquia de herança | Respeitado — ConcreteCreators substituem `RelatorioCreator` sem quebrar o contrato do cliente |
+| **ISP** | Não aplicável — sem interfaces | Boa aderência — `IGeradorRelatorio` tem um único método coeso, sem obrigações desnecessárias |
+| **DIP** | `Program` dependia diretamente de QuestPDF, `JsonSerializer` e `File` | `Program` depende de `RelatorioCreator` (abstração); instanciação dos concretos restrita ao ponto de entrada |
